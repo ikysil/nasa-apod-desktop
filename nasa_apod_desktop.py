@@ -1,31 +1,31 @@
 #!/usr/bin/env python
-# 
+#
 # Copyright (c) 2012 David Drake
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #    http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# 
-# 
+#
+#
 # nasa_apod_desktop.py
 # https://github.com/randomdrake/nasa-apod-desktop
-# 
+#
 # Written/Modified by David Drake
-# http://randomdrake.com 
-# http://twitter.com/randomdrake 
-# 
-# 
+# http://randomdrake.com
+# http://twitter.com/randomdrake
+#
+#
 # Tested on Ubuntu 12.04
-# 
-# 
+#
+#
 # DESCRIPTION
 # 1) Grabs your current download path
 # 2) Downloads the latest image of the day from NASA (http://apod.nasa.gov/apod/)
@@ -34,15 +34,15 @@
 # 5) Sets the image as your desktop.
 # 6) Adds image to XML file used to scroll through desktop background images.
 #
-# It's not very exciting to scroll through a single image, so it will attempt to download 
+# It's not very exciting to scroll through a single image, so it will attempt to download
 # additional images (default: 10) to seed your list of images.
 #
-# 
+#
 # INSTALLATION
 # Place the file wherever you like and chmod +x it to make it executable
 # Ensure you have Python installed (default for Ubuntu) and the PIL and lxml packages:
 # pip install -f requirements.txt or sudo apt-get install python-imaging python-lxml
-# 
+#
 #
 # RUN AT STARTUP
 # To have this run whenever you startup your computer, perform the following steps:
@@ -52,17 +52,17 @@
 # 4) Enter whatever Name and Comment you like with the following Command:
 # python /path/to/nasa_apod_desktop.py
 # 5) Click on the "Add" button
-# 
+#
 # DEFAULTS
 # While the script will detect as much as possible and has safe defaults, you may want to set your own.
-# 
+#
 # DOWNLOAD_PATH  - where you want the file to be downloaded. Will be auto-detected if not set.
 # CUSTOM_FOLDER  - if we detect your download folder, this will be the target folder in there.
-# RESOUTION_TYPE - 
+# RESOUTION_TYPE -
 #     'stretch': single monitor or the combined resolution of your available monitors
 #     'largest': largest resolution of your available monitors
 #     'default': use the default resolution that is set
-# RESOLUTION_X   - horizontal resolution if RESOLUTION_TYPE is not default or cannot be 
+# RESOLUTION_X   - horizontal resolution if RESOLUTION_TYPE is not default or cannot be
 #                  automatically determined
 # RESOLUTION_Y   - vertical resolution if RESOLUTION_TYPE is not default or cannot be
 #                  automatically determined
@@ -74,14 +74,15 @@
 
 DOWNLOAD_PATH = '/tmp/backgrounds/'
 CUSTOM_FOLDER = 'nasa-apod-backgrounds'
-RESOLUTION_TYPE = 'stretch'
-RESOLUTION_X = 1024
-RESOLUTION_Y = 768
+RESIZE = True
+RESOLUTION_TYPE = 'default'
+RESOLUTION_X = 1920
+RESOLUTION_Y = 1080
 NASA_APOD_SITE = 'http://apod.nasa.gov/apod/'
 IMAGE_SCROLL = True
 IMAGE_DURATION = 1200
-SEED_IMAGES = 10
-SHOW_DEBUG = False
+SEED_IMAGES = 90
+SHOW_DEBUG = True
 
 import glib
 import subprocess
@@ -117,7 +118,7 @@ def find_resolution():
         regex_search = 'connected'
     else:
         regex_search = 'current'
-        
+
     p1 = subprocess.Popen(["xrandr"], stdout=subprocess.PIPE)
     p2 = subprocess.Popen(["grep", regex_search], stdin=p1.stdout, stdout=subprocess.PIPE)
     p1.stdout.close()
@@ -180,7 +181,7 @@ def download_site(url):
         reply = response.read()
     except urllib2.HTTPError, error:
         if SHOW_DEBUG:
-            print "Error downloading " + url + " - " + str(error.code) 
+            print "Error downloading " + url + " - " + str(error.code)
         reply = "Error: " + str(error.code)
     return reply
 
@@ -217,10 +218,10 @@ def get_image(text):
             print "Retrieving image"
             urllib.urlretrieve(file_url, save_to, print_download_status)
 
-            # Adding additional padding to ensure entire line 
+            # Adding additional padding to ensure entire line
             if SHOW_DEBUG:
                 print "\rDone downloading", human_readable_size(file_size), "       "
-        else: 
+        else:
             urllib.urlretrieve(file_url, save_to)
     elif SHOW_DEBUG:
         print "File exists, moving on"
@@ -234,18 +235,21 @@ def resize_image(filename):
 
     image = Image.open(filename)
     current_x, current_y = image.size
-    if (current_x, current_y) == (RESOLUTION_X, RESOLUTION_Y):
-        if SHOW_DEBUG:
-            print "Images are currently equal in size. No need to scale."
-    else: 
-        if SHOW_DEBUG:
-            print "Resizing the image from", image.size[0], "x", image.size[1], "to", RESOLUTION_X, "x", RESOLUTION_Y
-        image = image.resize((RESOLUTION_X, RESOLUTION_Y), Image.ANTIALIAS)
+    if RESIZE:
+        if (current_x, current_y) == (RESOLUTION_X, RESOLUTION_Y):
+            if SHOW_DEBUG:
+                print "Images are currently equal in size. No need to scale."
+        else:
+            if SHOW_DEBUG:
+                print "Resizing the image from", image.size[0], "x", image.size[1], "to", RESOLUTION_X, "x", RESOLUTION_Y
+            image.thumbnail((RESOLUTION_X, RESOLUTION_Y), Image.ANTIALIAS)
 
-        if SHOW_DEBUG:
-            print "Saving the image to", filename
-        fhandle = open(filename, 'w')
-        image.save(fhandle, 'PNG')
+    image = image.copy()
+
+    if SHOW_DEBUG:
+        print "Saving the image to", filename
+    fhandle = open(filename, 'w')
+    image.save(fhandle, 'PNG')
 
 # Sets the new image as the wallpaper
 def set_gnome_wallpaper(file_path):
@@ -374,7 +378,7 @@ def get_image_info(element, text):
         else:
             # Relative path, handle it
             file_url = NASA_APOD_SITE + reg.group(1)
-    else: 
+    else:
         if SHOW_DEBUG:
             print "Could not find an image. May be a video today."
         return None, None, None
@@ -382,7 +386,7 @@ def get_image_info(element, text):
     # Create our handle for our remote file
     if SHOW_DEBUG:
         print "Opening remote URL"
-        
+
     remote_file = urllib.urlopen(file_url)
 
     filename = os.path.basename(file_url)
@@ -392,7 +396,7 @@ def get_image_info(element, text):
 
 if __name__ == '__main__':
     # Our program
-    if SHOW_DEBUG: 
+    if SHOW_DEBUG:
         print "Starting"
 
     # Find desktop resolution
@@ -405,7 +409,7 @@ if __name__ == '__main__':
     if not os.path.exists(os.path.expanduser(DOWNLOAD_PATH)):
         os.makedirs(os.path.expanduser(DOWNLOAD_PATH))
 
-    # Grab the HTML contents of the file 
+    # Grab the HTML contents of the file
     site_contents = download_site(NASA_APOD_SITE)
     if site_contents == "error":
         if SHOW_DEBUG:
